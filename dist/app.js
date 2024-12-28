@@ -12,24 +12,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const commander_1 = require("commander");
-const node_os_1 = __importDefault(require("node:os"));
-const config_1 = require("./config");
-const app_1 = __importDefault(require("./app"));
-function main() {
+const express_1 = __importDefault(require("express"));
+const node_cluster_1 = __importDefault(require("node:cluster"));
+const config_schema_1 = require("./config-schema");
+const app = (0, express_1.default)();
+app.get("/", (req, res) => {
+    res.send("Server is working fine");
+});
+function createServer(config) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a;
-        commander_1.program.option("--config <path>");
-        commander_1.program.parse();
-        const options = commander_1.program.opts();
-        if (options && "config" in options) {
-            const validatedConfig = yield (0, config_1.validateConfig)(yield (0, config_1.parseYAMLConfig)(options.config));
-            yield (0, app_1.default)({
-                port: validatedConfig.server.listen,
-                worker_count: (_a = validatedConfig.server.workers) !== null && _a !== void 0 ? _a : node_os_1.default.cpus().length,
-                config: validatedConfig,
+        const { worker_count } = config;
+        if (node_cluster_1.default.isPrimary) {
+            for (let i = 0; i < worker_count; i++) {
+                node_cluster_1.default.fork({
+                    config: JSON.stringify(config.config),
+                });
+            }
+        }
+        else {
+            const configuration = yield config_schema_1.rootConfigSchema.parseAsync(JSON.parse(process.env.config));
+            app.listen(8000, () => {
+                console.log("Server is running on port: 8000");
             });
         }
     });
 }
-main();
+exports.default = createServer;
