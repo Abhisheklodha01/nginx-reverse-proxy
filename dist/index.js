@@ -10,11 +10,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const commander_1 = require("commander");
+const config_1 = require("./config");
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        commander_1.program.option('--config');
+        commander_1.program.option('--config <path>');
         commander_1.program.parse();
         const options = commander_1.program.opts();
-        console.log(options);
+        if (options && 'config' in options) {
+            const validatedConfig = yield (0, config_1.validateConfig)(yield (0, config_1.parseYAMLConfig)(options.config));
+            console.log(validatedConfig);
+        }
     });
 }
+main();

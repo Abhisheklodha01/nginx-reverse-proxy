@@ -2,11 +2,10 @@
   "name": "nginx-reverse-proxy",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
   "scripts": {
-    "start": "node dist/index",
+    "start": "node dist/index --config config.yaml",
     "build": "tsc -p",
-    "dev": "tsc-watch --onSuccess \"npm start\""
+    "dev": "tsc-watch --onSuccess \"npm start \""
   },
   "author": "",
   "license": "ISC",

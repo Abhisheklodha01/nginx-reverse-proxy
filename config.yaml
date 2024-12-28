@@ -1,7 +1,7 @@
 server:
   listen: 8080
   workers: 4
-  upstream:
+  upstreams:
     - id: node1
       url: http:localhost:8001
 
