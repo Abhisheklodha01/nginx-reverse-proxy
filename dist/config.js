@@ -14,14 +14,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const promises_1 = __importDefault(require("node:fs/promises"));
 const yaml_1 = require("yaml");
+const config_schema_1 = require("./config-schema");
 function parseYAMLConfig(filePath) {
     return __awaiter(this, void 0, void 0, function* () {
-        const configFileContent = yield promises_1.default.readFile(filePath, 'utf-8');
+        const configFileContent = yield promises_1.default.readFile(filePath, "utf-8");
         const parseConfiguration = (0, yaml_1.parse)(configFileContent);
         return JSON.stringify(parseConfiguration);
     });
 }
 function validateConfig(config) {
     return __awaiter(this, void 0, void 0, function* () {
+        const validatedConfig = yield config_schema_1.rootConfigSchema.parseAsync(JSON.parse(config));
+        return validatedConfig;
     });
 }
