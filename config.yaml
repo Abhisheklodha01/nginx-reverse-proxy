@@ -2,11 +2,23 @@ server:
   listen: 8080
   workers: 4
   upstreams:
-    - id: node1
-      url: http:localhost:8001
+    - id: portfolio
+      url: abhisheklodhaportfolio.netlify.app
 
-    - id: node2
-      url: http:localhost:8002
+    - id: car-store
+      url: manageyourcars.netlify.app
+
+    - id: buddyformovies
+      url: buddyformovies.netlify.app
+
+    - id: todos
+      url: jsonplaceholder.typicode.com
+
+    - id: comments
+      url: jsonplaceholder.typicode.com
+
+    - id: posts
+      url: jsonplaceholder.typicode.com
   
   headers:
     - key: x-forward-for
@@ -16,11 +28,25 @@ server:
       value: 'Bearer xyz'  
 
   rules:   
-    - path: /
+    - path: /todos
       upstreams: 
-       - node1
-       - node2
+       - todos
 
-    - path: /admin
+    - path: /comments
       upstreams: 
-       - node2    
+       - comments
+
+    - path: /posts
+      upstreams: 
+       - posts
+    - path: /portfolio
+      upstreams: 
+       - portfolio
+
+    - path: /movies
+      upstreams: 
+       - buddyformovies
+
+    - path: /cars
+      upstreams: 
+       - car-store
