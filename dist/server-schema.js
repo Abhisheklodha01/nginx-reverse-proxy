@@ -9,7 +9,7 @@ exports.workerMessageSchema = zod_1.z.object({
     url: zod_1.z.string(),
 });
 exports.workerMessageReplySchema = zod_1.z.object({
-    data: zod_1.z.string().optional(),
+    data: zod_1.z.union([zod_1.z.string(), zod_1.z.array(zod_1.z.any())]).optional(),
     error: zod_1.z.string().optional(),
-    errorCode: zod_1.z.enum(['500', '404']).optional(),
+    errorCode: zod_1.z.enum(["500", "404"]).optional(),
 });

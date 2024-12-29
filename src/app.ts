@@ -1,5 +1,6 @@
-import http, { request } from "node:http";
+import express from "express";
 import cluster, { Worker } from "node:cluster";
+import axios from "axios";
 import { ConfigSchemaType, rootConfigSchema } from "./config-schema";
 import {
   workerMessageSchema,
@@ -17,42 +18,51 @@ interface serverConfig {
 async function createServer(config: serverConfig) {
   const { worker_count } = config;
   const WORKER_POOL: Worker[] = [];
+
   if (cluster.isPrimary) {
     for (let i = 0; i < worker_count; i++) {
-      const w = cluster.fork({
+      const worker = cluster.fork({
         config: JSON.stringify(config.config),
       });
-      WORKER_POOL.push(w);
+      WORKER_POOL.push(worker);
     }
-    const server = http.createServer((req, res) => {
+
+    const app = express();
+
+    app.use(express.json());
+
+    app.all("*", (req: any, res: any) => {
       const index = Math.floor(Math.random() * WORKER_POOL.length);
-      const worker = WORKER_POOL.at(index);
+      const worker = WORKER_POOL[index];
+
       if (!worker) {
-        throw new Error("Worker not found");
+        return res.status(500).send("Worker not found");
       }
+
       const payload: WorkerMessageType = {
         requestType: "HTTP",
         headers: req.headers,
-        body: null,
-        url: `${req.url}`,
+        body: req.body,
+        url: req.url,
       };
+
       worker.send(JSON.stringify(payload));
-      worker.on("message", async (workerReply: string) => {
+
+      worker.once("message", async (workerReply: string) => {
         const reply: WorkerMessageReplyType =
           await workerMessageReplySchema.parseAsync(JSON.parse(workerReply));
+
         if (reply.errorCode) {
-          res.writeHead(parseInt(reply.errorCode));
-          res.end(reply.error);
+          return res.status(parseInt(reply.errorCode)).send(reply.error);
         } else {
-          res.writeHead(200);
-          res.end(reply.data);
-          return;
+          return res.status(200).send(reply.data);
         }
       });
     });
-    server.listen(config.port, () => {
+
+    app.listen(config.port, () => {
       console.log(
-        `Reverse Proxy Ninja 🥷 ${" "} is Listing on PORT: ${config.port}`
+        `Reverse Proxy Ninja 🥷 is listening on PORT: ${config.port}`
       );
     });
   } else {
@@ -60,56 +70,48 @@ async function createServer(config: serverConfig) {
       JSON.parse(process.env.config as string)
     );
     process.on("message", async (message: string) => {
+      
       const validatedMessage = await workerMessageSchema.parseAsync(
         JSON.parse(message)
       );
       const requestUrl = validatedMessage.url;
-      const rule = config.config.server.rules.find((e) => {
-        const regex = new RegExp(`^${e.path}.*$`);
+
+      const rule = configuration.server.rules.find((rule) => {
+        const regex = new RegExp(`^${rule.path}(/|$)`);
         return regex.test(requestUrl);
       });
+
       if (!rule) {
-        const reply: WorkerMessageReplyType = {
-          errorCode: "404",
-          error: "Rule not found",
-        };
-        if (process.send) {
-          return process.send(JSON.stringify(reply));
-        }
+        console.error("No rule matched for:", requestUrl);
+        const reply = { errorCode: "404", error: "Rule not found" };
+        return process.send?.(JSON.stringify(reply));
       }
-      const upstreamId = rule?.upstreams[0];
-      const upstream = config.config.server.upstreams.find(
-        (e) => e.id === upstreamId
+
+      const upstreamId = rule.upstreams[0];
+      const upstream = configuration.server.upstreams.find(
+        (upstream) => upstream.id === upstreamId
       );
+
       if (!upstream) {
-        const reply: WorkerMessageReplyType = {
-          errorCode: "500",
-          error: "Upstreams not found",
-        };
-        if (process.send) {
-          return process.send(JSON.stringify(reply));
-        }
+        console.error("Upstream not found for ID:", upstreamId);
+        const reply = { errorCode: "500", error: "Upstream not found" };
+        return process.send?.(JSON.stringify(reply));
       }
-
-      const request = http.request(
-        { host: upstream?.url, path: requestUrl, method: "GET" },
-        (proxyRes) => {
-          let body = "";
-          proxyRes.on("data", (chunk) => {
-            body += chunk;
-          });
-
-          proxyRes.on("end", () => {
-            const reply: WorkerMessageReplyType = {
-              data: body,
-            };
-            if (process.send) {
-              return process.send(JSON.stringify(reply));
-            }
-          });
-        }
-      );
-      request.end();
+      console.log("Matched Upstream:", upstream);
+      
+      try {
+        const proxyRes = await axios.get(`${upstream.url}/${requestUrl}`);
+        console.log("Response from upstream:", proxyRes.data);
+        const reply = { data: proxyRes.data };
+        return process.send?.(JSON.stringify(reply));
+      } catch (error: any) {
+        console.error("Error in upstream request:", error.message);
+        const reply = {
+          errorCode: "500",
+          error: error.message || "Proxy error",
+        };
+        return process.send?.(JSON.stringify(reply));
+      }
     });
   }
 }

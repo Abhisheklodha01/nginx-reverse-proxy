@@ -3,22 +3,22 @@ server:
   workers: 4
   upstreams:
     - id: portfolio
-      url: abhisheklodhaportfolio.netlify.app
+      url: https://abhisheklodhaportfolio.netlify.app
 
     - id: car-store
-      url: manageyourcars.netlify.app
+      url: https://manageyourcars.netlify.app
 
     - id: buddyformovies
-      url: buddyformovies.netlify.app
+      url: https://buddyformovies.netlify.app
 
     - id: todos
-      url: jsonplaceholder.typicode.com
+      url: https://jsonplaceholder.typicode.com
 
     - id: comments
-      url: jsonplaceholder.typicode.com
+      url: https://jsonplaceholder.typicode.com
 
     - id: posts
-      url: jsonplaceholder.typicode.com
+      url: https://jsonplaceholder.typicode.com
   
   headers:
     - key: x-forward-for
